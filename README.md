@@ -5,6 +5,8 @@
 - Vue Js
 - Vue router
 - Vuex
+- Vee Validate
+- Yup
 - Bootstrap 5
 - Axios
 - Vite
