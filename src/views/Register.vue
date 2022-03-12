@@ -1,6 +1,6 @@
 <template>
     <main class="form-signin mt-4">
-        <form @submit.prevent="handleSubmit" autocomplete="off">
+        <form @submit.prevent="onSubmit" autocomplete="off">
             <h1 class="h3 mb-3 fw-normal text-center">Register new account</h1>
 
             <div class="form-floating">
@@ -9,16 +9,14 @@
                     class="form-control"
                     id="floatingName"
                     placeholder="name"
-                    v-model="formData.name"
-                    :class="{ 'is-invalid': errors ? errors.name : false }"
+                    v-model="name"
+                    :class="{ 'is-invalid': errors.name ?? false }"
                     autofocus
                 />
                 <label for="floatingName">Your Name</label>
 
-                <div v-if="errors" class="invalid-feedback text-start">
-                    <div v-for="error in errors.name" :key="error">
-                        {{ error }}
-                    </div>
+                <div v-if="errors.name" class="invalid-feedback text-start">
+                    {{ errors.name }}
                 </div>
             </div>
             <div class="form-floating">
@@ -27,15 +25,18 @@
                     class="form-control"
                     id="floatingInput"
                     placeholder="name@example.com"
-                    v-model="formData.email"
-                    :class="{ 'is-invalid': errors ? errors.email : false }"
+                    v-model="email"
+                    :class="{ 'is-invalid': errors.email ?? false }"
                 />
                 <label for="floatingInput">Email address</label>
 
-                <div v-if="errors" class="invalid-feedback text-start">
-                    <div v-for="error in errors.email" :key="error">
+                <div v-if="errorsBackend" class="text-start text-danger">
+                    <div v-for="error in errorsBackend.email" :key="error">
                         {{ error }}
                     </div>
+                </div>
+                <div v-if="errors.email" class="invalid-feedback text-start">
+                    {{ errors.email }}
                 </div>
             </div>
             <div class="form-floating">
@@ -44,14 +45,12 @@
                     class="form-control"
                     id="floatingPassword"
                     placeholder="Password"
-                    v-model="formData.password"
-                    :class="{ 'is-invalid': errors ? errors.password : false }"
+                    v-model="password"
+                    :class="{ 'is-invalid': errors.password ?? false }"
                 />
                 <label for="floatingPassword">Password</label>
-                <div v-if="errors" class="invalid-feedback text-start">
-                    <div v-for="error in errors.password" :key="error">
-                        {{ error }}
-                    </div>
+                <div v-if="errors.password" class="invalid-feedback text-start">
+                    {{ errors.password }}
                 </div>
             </div>
 
@@ -61,15 +60,37 @@
                     class="form-control"
                     id="floatingPasswordConfirm"
                     placeholder="Password"
-                    v-model="formData.password_confirmation"
+                    v-model="password_confirmation"
+                    :class="{
+                        'is-invalid': errors.password_confirmation ?? false,
+                    }"
                 />
                 <label for="floatingPasswordConfirm">Password Confirm</label>
+                <div
+                    v-if="errors.password_confirmation"
+                    class="invalid-feedback text-start"
+                >
+                    {{ errors.password_confirmation }}
+                </div>
             </div>
 
             <button
                 class="w-100 btn btn-lg btn-primary mt-3"
                 type="submit"
-                @click.prevent="handleSubmit"
+                :disabled="isSubmitting"
+                v-if="isSubmitting"
+            >
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                Loading...
+            </button>
+
+            <button
+                class="w-100 btn btn-lg btn-primary mt-3"
+                type="submit"
+                :disabled="isSubmitting"
+                v-else
             >
                 Register
             </button>
@@ -84,28 +105,42 @@
 </template>
 
 <script setup>
-import { reactive } from '@vue/reactivity'
 import { computed, onMounted } from '@vue/runtime-core'
+import { useField, useForm } from 'vee-validate'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
+import * as yup from 'yup'
 const store = useStore()
 const router = useRouter()
 
-const formData = reactive({
-    name: '',
-    email: '',
-    password: '',
-    password_confirmation: '',
+const registerSchema = yup.object({
+    name: yup.string().required().min(3).trim(),
+    email: yup.string().email().required(),
+    password: yup.string().required().min(6),
+    password_confirmation: yup
+        .string()
+        .required()
+        .min(6)
+        .oneOf([yup.ref('password'), null], "Password doesn't match!"),
 })
 
-const errors = computed(() => store.state.auth.errors)
+const { errors, handleSubmit, isSubmitting } = useForm({
+    validationSchema: registerSchema,
+})
+
+const { value: name } = useField('name')
+const { value: email } = useField('email')
+const { value: password } = useField('password')
+const { value: password_confirmation } = useField('password_confirmation')
+
+const errorsBackend = computed(() => store.state.auth.errors)
 onMounted(() => {
     store.commit('auth/setErrors', null)
 })
 
-const handleSubmit = async () => {
-    await store.dispatch('auth/register', formData)
-    if (!errors.value) {
+const onSubmit = handleSubmit(async (values) => {
+    await store.dispatch('auth/register', values)
+    if (await !errorsBackend.value) {
         Swal.fire({
             title: 'Success!',
             text: 'Registration successfully',
@@ -114,7 +149,7 @@ const handleSubmit = async () => {
         })
         router.push('/login')
     }
-}
+})
 </script>
 
 <style scoped>

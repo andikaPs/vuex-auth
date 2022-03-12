@@ -28,10 +28,12 @@ export default {
       try {
         await axios.get("/sanctum/csrf-cookie");
         const response = await axios.post("api/register", data);
-        commit("setUserdata", response.data.user);
-        commit("setErrors", null);
+        if (response) {
+          commit("setUserdata", response.data.user);
+          commit("setErrors", null);
+        }
       } catch (error) {
-        return false;
+        console.log(error);
       }
     },
     async login({ commit }, data) {
@@ -52,16 +54,6 @@ export default {
           confirmButtonText: "Ok",
         });
       }
-      // axios
-      //   .post("api/login", data)
-      //   .then(response => {
-      //     console.log(response);
-      //     // commit("setUserdata", response.data.user);
-      //     // commit("setErrors", null);
-      //     // localStorage.setItem("authToken", response.data.token);
-      //     // commit("setIsLogin", true);
-      //   })
-      //   .catch(err => console.log(err));
     },
     logout({ commit }) {
       axios

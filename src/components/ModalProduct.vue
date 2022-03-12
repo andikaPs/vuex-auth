@@ -22,7 +22,7 @@
                         aria-label="Close"
                     ></button>
                 </div>
-                <form @submit.prevent="handleSubmit">
+                <form @submit.prevent="onSubmit">
                     <div class="modal-body">
                         <div class="form-floating mb-3">
                             <input
@@ -31,18 +31,16 @@
                                 id="productname"
                                 placeholder="example"
                                 :class="{
-                                    'is-invalid': errors ? errors.name : false,
+                                    'is-invalid': errors.name ?? false,
                                 }"
-                                v-model="formData.name"
+                                v-model="name"
                             />
                             <label for="productname"
                                 >Product name
                                 <small class="text-danger">*</small></label
                             >
-                            <div v-if="errors" class="invalid-feedback">
-                                <div v-for="error in errors.name" :key="error">
-                                    {{ error }}
-                                </div>
+                            <div v-if="errors.name" class="invalid-feedback">
+                                {{ errors.name }}
                             </div>
                         </div>
                         <div class="form-floating mb-3">
@@ -51,7 +49,7 @@
                                 class="form-control"
                                 id="description"
                                 placeholder="example"
-                                v-model="formData.description"
+                                v-model="description"
                             />
                             <label for="description">Description product</label>
                         </div>
@@ -61,19 +59,17 @@
                                 class="form-control"
                                 id="price"
                                 placeholder="12.0"
-                                v-model="formData.price"
+                                v-model="price"
                                 :class="{
-                                    'is-invalid': errors ? errors.price : false,
+                                    'is-invalid': errors.price ?? false,
                                 }"
                             />
                             <label for="price"
                                 >Price
                                 <small class="text-danger">*</small></label
                             >
-                            <div v-if="errors" class="invalid-feedback">
-                                <div v-for="error in errors.price" :key="error">
-                                    {{ error }}
-                                </div>
+                            <div v-if="errors.price" class="invalid-feedback">
+                                {{ errors.price }}
                             </div>
                         </div>
                     </div>
@@ -85,7 +81,27 @@
                         >
                             Close
                         </button>
-                        <button type="submit" class="btn btn-primary">
+                        <button
+                            class="btn btn-primary"
+                            type="submit"
+                            :disabled="isSubmitting"
+                            v-if="isSubmitting"
+                        >
+                            <div
+                                class="spinner-border spinner-border-sm"
+                                role="status"
+                            >
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            Loading...
+                        </button>
+
+                        <button
+                            class="btn btn-primary"
+                            type="submit"
+                            :disabled="isSubmitting"
+                            v-else
+                        >
                             Submit
                         </button>
                     </div>
@@ -96,23 +112,32 @@
 </template>
 
 <script setup>
-import { reactive } from '@vue/reactivity'
-import { computed, onUpdated, watch } from '@vue/runtime-core'
+import { computed } from '@vue/runtime-core'
+import { useForm, useField } from 'vee-validate'
 import { useStore } from 'vuex'
-
+import * as yup from 'yup'
 const store = useStore()
 
-const formData = reactive({
-    name: '',
-    description: '',
-    price: '',
+const schema = yup.object({
+    name: yup.string().required().trim().min(3),
+    description: yup.string().max(255),
+    price: yup.number().required(),
 })
-const errors = computed(() => store.state.products.errors)
 
-const handleSubmit = async () => {
+const { errors, handleSubmit, isSubmitting } = useForm({
+    validationSchema: schema,
+})
+
+const { value: name } = useField('name')
+const { value: description } = useField('description')
+const { value: price } = useField('price')
+
+const errorsBackend = computed(() => store.state.products.errors)
+
+const onSubmit = handleSubmit(async (values) => {
     const data = {
-        ...formData,
-        slug: formData.name.toLowerCase().split(' ').join('-'),
+        ...values,
+        slug: values.name.toLowerCase().split(' ').join('-'),
     }
     await store.dispatch('products/addProduct', data)
     if (await store.state.products.success) {
@@ -122,12 +147,11 @@ const handleSubmit = async () => {
             icon: 'success',
             confirmButtonText: 'Cool',
         })
-        formData.name = ''
-        formData.description = ''
-        formData.price = ''
-        dispatch('getProducts')
+        name.value = ''
+        description.value = ''
+        price.value = ''
     }
-}
+})
 </script>
 
 <style>

@@ -11,9 +11,12 @@ axios.interceptors.response.use(
   response => response,
   error => {
     if (error.response.status == 422) {
+      console.log(error.response.data.errors);
+      console.log(error.response.data.errors.email);
       if (error.response.data.errors.email) {
         store.commit("auth/setErrors", error.response.data.errors);
       } else {
+        throw Error(error.response.data.message);
         store.commit("products/setErrors", error.response.data.errors);
       }
     } else if (error.response.status == 401) {

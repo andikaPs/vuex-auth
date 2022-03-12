@@ -1,7 +1,7 @@
 <template>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="#">Vuex Auth</a>
+            <router-link to="/" class="navbar-brand">Vuex Auth</router-link>
             <button
                 class="navbar-toggler"
                 type="button"
@@ -51,11 +51,9 @@
 </template>
 
 <script setup>
-import { ref } from '@vue/reactivity'
 import { computed, onMounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
-import auth from '../store/modules/auth'
 const store = useStore()
 const router = useRouter()
 const isLogin = computed(() => store.state.auth.isLogin)

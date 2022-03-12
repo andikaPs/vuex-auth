@@ -1,6 +1,6 @@
 <template>
     <main class="form-signin mt-4">
-        <form @submit.prevent="handleSubmit" autocomplete="off">
+        <form @submit.prevent="onSubmit" autocomplete="off">
             <h1 class="h3 mb-3 fw-normal text-center">Please login</h1>
 
             <div class="form-floating">
@@ -9,15 +9,13 @@
                     class="form-control"
                     id="floatingInput"
                     placeholder="name@example.com"
-                    v-model="formData.email"
-                    :class="{ 'is-invalid': errors ? errors.email : false }"
+                    v-model="email"
+                    :class="{ 'is-invalid': errors.email ?? false }"
                 />
                 <label for="floatingInput">Email address</label>
 
-                <div v-if="errors" class="invalid-feedback text-start">
-                    <div v-for="error in errors.email" :key="error">
-                        {{ error }}
-                    </div>
+                <div v-if="errors.email" class="invalid-feedback text-start">
+                    {{ errors.email }}
                 </div>
             </div>
             <div class="form-floating">
@@ -26,18 +24,33 @@
                     class="form-control"
                     id="floatingPassword"
                     placeholder="Password"
-                    v-model="formData.password"
-                    :class="{ 'is-invalid': errors ? errors.password : false }"
+                    v-model="password"
+                    :class="{ 'is-invalid': errors.password ?? false }"
                 />
                 <label for="floatingPassword">Password</label>
-                <div v-if="errors" class="invalid-feedback text-start">
-                    <div v-for="error in errors.password" :key="error">
-                        {{ error }}
-                    </div>
+                <div v-if="errors.password" class="invalid-feedback text-start">
+                    {{ errors.password }}
                 </div>
             </div>
 
-            <button class="w-100 btn btn-lg btn-primary mt-3" type="submit">
+            <button
+                class="w-100 btn btn-lg btn-primary mt-3"
+                type="submit"
+                :disabled="isSubmitting"
+                v-if="isSubmitting"
+            >
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                Loading...
+            </button>
+
+            <button
+                class="w-100 btn btn-lg btn-primary mt-3"
+                type="submit"
+                :disabled="isSubmitting"
+                v-else
+            >
                 Login
             </button>
             <p class="mt-5 mb-3 text-muted">
@@ -51,44 +64,39 @@
 </template>
 
 <script setup>
-import { reactive } from '@vue/reactivity'
-import { computed, onMounted, watch } from '@vue/runtime-core'
+import { computed, onMounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useStore } from 'vuex'
-
+import { useField, useForm } from 'vee-validate'
+import * as yup from 'yup'
 const store = useStore()
 const router = useRouter()
 
-const formData = reactive({
-    email: '',
-    password: '',
+const loginScema = yup.object({
+    email: yup.string().required().email(),
+    password: yup.string().required().min(6),
 })
 
-const errors = computed(() => store.state.auth.errors)
-const isLogin = computed(() => store.state.auth.isLoggedIn)
+const { errors, handleSubmit, isSubmitting } = useForm({
+    validationSchema: loginScema,
+})
+
+const { value: email } = useField('email')
+const { value: password } = useField('password')
+
+const errorsBackend = computed(() => store.state.auth.errors)
 
 onMounted(() => {
     store.commit('auth/setErrors', null)
 })
 
-const handleSubmit = async () => {
-    await store.dispatch('auth/login', formData)
+const onSubmit = handleSubmit(async (values) => {
+    await store.dispatch('auth/login', values)
 
-    if (await !errors.value) {
-        Swal.fire({
-            title: 'Please Wait!',
-            timer: 3000,
-            timerProgressBar: true,
-            didOpen: () => {
-                Swal.showLoading()
-            },
-        }).then((result) => {
-            if (result.dismiss === Swal.DismissReason.timer) {
-                router.push('/products')
-            }
-        })
+    if (await !errorsBackend.value) {
+        router.push('/products')
     }
-}
+})
 </script>
 
 <style scoped>
